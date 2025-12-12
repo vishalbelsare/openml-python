@@ -1,16 +1,16 @@
 # License: BSD 3-Clause
+from __future__ import annotations
 
 import unittest
-from typing import List
 from random import randint, shuffle
 
-from openml.exceptions import OpenMLServerException
-from openml.testing import TestBase
 from openml.datasets import (
     get_dataset,
     list_datasets,
 )
+from openml.exceptions import OpenMLServerException
 from openml.tasks import TaskType, create_task, get_task
+from openml.testing import TestBase
 
 
 class OpenMLTaskTest(TestBase):
@@ -25,18 +25,15 @@ class OpenMLTaskTest(TestBase):
     def setUpClass(cls):
         if cls is OpenMLTaskTest:
             raise unittest.SkipTest("Skip OpenMLTaskTest tests," " it's a base class")
-        super(OpenMLTaskTest, cls).setUpClass()
+        super().setUpClass()
 
     def setUp(self, n_levels: int = 1):
-
-        super(OpenMLTaskTest, self).setUp()
+        super().setUp()
 
     def test_download_task(self):
-
         return get_task(self.task_id)
 
     def test_upload_task(self):
-
         # We don't know if the task in question already exists, so we try a few times. Checking
         # beforehand would not be an option because a concurrent unit test could potentially
         # create the same task and make this unit test fail (i.e. getting a dataset and creating
@@ -56,7 +53,7 @@ class OpenMLTaskTest(TestBase):
                 task.publish()
                 TestBase._mark_entity_for_removal("task", task.id)
                 TestBase.logger.info(
-                    "collected from {}: {}".format(__file__.split("/")[-1], task.id)
+                    f"collected from {__file__.split('/')[-1]}: {task.id}",
                 )
                 # success
                 break
@@ -70,34 +67,23 @@ class OpenMLTaskTest(TestBase):
                     raise e
         else:
             raise ValueError(
-                "Could not create a valid task for task type ID {}".format(self.task_type)
+                f"Could not create a valid task for task type ID {self.task_type}",
             )
 
-    def _get_compatible_rand_dataset(self) -> List:
-
-        compatible_datasets = []
+    def _get_compatible_rand_dataset(self) -> list:
         active_datasets = list_datasets(status="active")
 
         # depending on the task type, find either datasets
         # with only symbolic features or datasets with only
         # numerical features.
         if self.task_type == TaskType.SUPERVISED_REGRESSION:
-            # regression task
-            for dataset_id, dataset_info in active_datasets.items():
-                if "NumberOfSymbolicFeatures" in dataset_info:
-                    if dataset_info["NumberOfSymbolicFeatures"] == 0:
-                        compatible_datasets.append(dataset_id)
+            compatible_datasets = active_datasets[active_datasets["NumberOfSymbolicFeatures"] == 0]
         elif self.task_type == TaskType.CLUSTERING:
-            # clustering task
-            compatible_datasets = list(active_datasets.keys())
+            compatible_datasets = active_datasets
         else:
-            for dataset_id, dataset_info in active_datasets.items():
-                # extra checks because of:
-                # https://github.com/openml/OpenML/issues/959
-                if "NumberOfNumericFeatures" in dataset_info:
-                    if dataset_info["NumberOfNumericFeatures"] == 0:
-                        compatible_datasets.append(dataset_id)
+            compatible_datasets = active_datasets[active_datasets["NumberOfNumericFeatures"] == 0]
 
+        compatible_datasets = list(compatible_datasets["did"])
         # in-place shuffling
         shuffle(compatible_datasets)
         return compatible_datasets
@@ -107,7 +93,6 @@ class OpenMLTaskTest(TestBase):
         # return compatible_datasets[random_dataset_pos]
 
     def _get_random_feature(self, dataset_id: int) -> str:
-
         random_dataset = get_dataset(dataset_id)
         # necessary loop to overcome string and date type
         # features.
